@@ -3,6 +3,27 @@ import numpy as np
 
 MAX_ITERATIONS = 100
 
+def add_hsv_jitter(image, hue_jitter, sat_jitter, val_jitter):
+
+    # get HSV
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    height, width, _ = hsv_image.shape
+
+    # get random value
+    hue_diff = np.random.randint(-hue_jitter, hue_jitter+1, size=(height, width), dtype=np.int)
+    sat_diff = np.random.randint(-sat_jitter, sat_jitter+1, size=(height, width), dtype=np.int)
+    val_diff = np.random.randint(-val_jitter, val_jitter+1, size=(height, width), dtype=np.int)
+
+    # clip
+    hsv_image[:,:,0] = (hsv_image[:,:,0] + hue_diff) % 180
+    hsv_image[:,:,1] = np.clip(hsv_image[:,:,1] + sat_diff, 0, 255)
+    hsv_image[:,:,2] = np.clip(hsv_image[:,:,2] + val_diff, 0, 255)
+
+    # get RGB
+    jittered_image = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
+
+    return jittered_image
+
 def normal_x(x, width):
     return (int)(x * (width - 1) + 0.5)
 def normal_y(y, height):
@@ -279,6 +300,12 @@ def resize_img(img, max_size=300):
         img = cv2.resize(img, (max_size, int((max_size/h) * w)))
     return img, w, h
 
+def displayImg(img, windowName = 'Image'):
+    img = img[:,:,::-1]
+    cv2.imshow(windowName, img)
+    cv2.waitKey(0)
+    cv2.destroyWindow(windowName)
+
 debug = False
 
 if __name__ == "__main__":
@@ -298,6 +325,9 @@ if __name__ == "__main__":
     parser.add_argument('--f_c', type=float, default=1., help='Curvature filter - to limit/exaggerate stroke curvature')
     parser.add_argument('--maxLength', type=int, default=None, help='Max. stroke length')
     parser.add_argument('--minLength', type=int, default=None, help='Min. stroke length')
+    parser.add_argument('--j_h', type=float, default=0., help='Hue jitter')
+    parser.add_argument('--j_s', type=float, default=0., help='Saturation jitter')
+    parser.add_argument('--j_v', type=float, default=0., help='Value jitter')
 
     args = parser.parse_args()
 
@@ -305,6 +335,13 @@ if __name__ == "__main__":
 
     img = cv2.imread(args.img, cv2.IMREAD_COLOR)[:,:,::-1]
     # img, original_width, original_height = resize_img(img)
+
+    if args.j_h or args.j_s or args.j_v:
+        hue_jitter = int(args.j_h*180)
+        saturation_jitter = int(args.j_s*256)
+        value_jitter = int(args.j_v*256)
+        img = add_hsv_jitter(img, hue_jitter, saturation_jitter, value_jitter)
+        displayImg(img)
 
     painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s, f_c=args.f_c, max_str_len=args.maxLength, min_str_len=args.minLength) * 255.
 
