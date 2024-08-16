@@ -272,7 +272,7 @@ def paint(source_image, R, T=100, curved=True, f_g=1):
 def resize_img(img, max_size=300):
     h, w, _ = img.shape
     if w > max_size and w > h:
-        img = cv2.resize(img, (int((max_size/w) * h, max_size)))
+        img = cv2.resize(img, (int((max_size/w) * h), max_size))
     elif h > max_size and h >= w:
         img = cv2.resize(img, (max_size, int((max_size/h) * w)))
     return img, w, h
