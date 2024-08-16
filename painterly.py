@@ -220,6 +220,7 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved):
 
     for x in range(0, width, grid):
         for y in range(0, height, grid):
+            print('Radius = %.2f, (x,y) = (%d, %d)' % (r, x, y))
             # avg the error near (x,y)
             D = np.mean(np.abs(canvas*255. - reference_image), axis=2)
             region = D[max(y-grid//2, 0):y+grid//2, max(x-grid//2, 0):x+grid//2]
@@ -298,9 +299,9 @@ if __name__ == "__main__":
     debug = args.debug
 
     img = cv2.imread(args.img, cv2.IMREAD_COLOR)[:,:,::-1]
-    img, original_width, original_height = resize_img(img)
+    # img, original_width, original_height = resize_img(img)
 
     painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g) * 255.
 
-    painting = cv2.resize(painting, (original_width, original_height))
+    # painting = cv2.resize(painting, (original_width, original_height))
     cv2.imwrite(args.output, painting[:,:,::-1])
