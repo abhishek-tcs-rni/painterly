@@ -98,7 +98,7 @@ def make_stroke(r, x0, x1, y0, y1, width, height):
 # cache gradients
 gradient, grad_x, grad_y = None, None, None
 
-def make_spline_stroke(x0, y0, R, ref_image, canvas, max_stroke_length=None, fc=1):
+def make_spline_stroke(x0, y0, R, ref_image, canvas, max_stroke_length=None, min_stroke_length=None, fc=1):
     """
     Draw a curved line on a canvas from a starting point based on gradients
 
@@ -136,7 +136,7 @@ def make_spline_stroke(x0, y0, R, ref_image, canvas, max_stroke_length=None, fc=
 
     # default max stroke length is 1/3rd of canvas width
     max_stroke_length = max_stroke_length if max_stroke_length is not None else int(ref_image.shape[1] * 0.1)
-    min_stroke_length = int(ref_image.shape[1] * 0.02)
+    min_stroke_length = min_stroke_length if min_stroke_length is not None else int(ref_image.shape[1] * 0.02)
 
     height, width, _ = ref_image.shape
 
@@ -194,7 +194,7 @@ def apply_stroke(canvas, stroke, color):
 
     return canvas * (1 - s_expanded) + s_color
 
-def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c):
+def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c, max_str_len=None, min_str_len=None):
     """
     Go through the pixels and paint a layer of strokes with a given radius
 
@@ -228,7 +228,7 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c):
 
             if areaError > T:
                 if curved:
-                    s = 1 - make_spline_stroke(x, y, r, reference_image, canvas, fc=f_c)
+                    s = 1 - make_spline_stroke(x, y, r, reference_image, canvas, fc=f_c, max_stroke_length=max_str_len, min_stroke_length=min_str_len)
                 else:
                     noise = np.random.rand(region.shape[0], region.shape[1])*0.0001
                     y1, x1 = np.unravel_index((region + noise).argmax(), region.shape)
@@ -240,7 +240,7 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c):
         # break
     return canvas
 
-def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1):
+def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1, max_str_len=None, min_str_len=None):
     """
     Paint a given image
 
@@ -267,7 +267,7 @@ def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1):
         # reset gradiant cache
         gradient, grad_x, grad_y = None, None, None
         # paint a layer
-        canvas = paint_layer(canvas, reference_image, r, T=T, curved=curved, f_g=f_g, f_c=f_c)
+        canvas = paint_layer(canvas, reference_image, r, T=T, curved=curved, f_g=f_g, f_c=f_c, max_str_len=max_str_len, min_str_len=min_str_len)
 
     return canvas
 
@@ -296,6 +296,8 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', default=False, help='Output information important for debugging.')
     parser.add_argument('--f_s', type=float, default=0., help='Std. Dev. of Gaussian kernel')
     parser.add_argument('--f_c', type=float, default=1., help='Curvature filter - to limit/exaggerate stroke curvature')
+    parser.add_argument('--maxLength', type=int, default=None, help='Max. stroke length')
+    parser.add_argument('--minLength', type=int, default=None, help='Min. stroke length')
 
     args = parser.parse_args()
 
@@ -304,7 +306,7 @@ if __name__ == "__main__":
     img = cv2.imread(args.img, cv2.IMREAD_COLOR)[:,:,::-1]
     # img, original_width, original_height = resize_img(img)
 
-    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s, f_c=args.f_c) * 255.
+    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s, f_c=args.f_c, max_str_len=args.maxLength, min_str_len=args.minLength) * 255.
 
     # painting = cv2.resize(painting, (original_width, original_height))
     cv2.imwrite(args.output, painting[:,:,::-1])
