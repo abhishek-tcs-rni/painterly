@@ -240,7 +240,7 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved):
         # break
     return canvas
 
-def paint(source_image, R, T=100, curved=True, f_g=1):
+def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1):
     """
     Paint a given image
 
@@ -262,7 +262,8 @@ def paint(source_image, R, T=100, curved=True, f_g=1):
     # paint the canvas
     for r in sorted(R, reverse=True): # largest to smallest
         # apply Gaussian blur
-        reference_image = cv2.GaussianBlur(source_image, (r,r) if r%2 == 1 else (r+1, r+1), 0)
+        sigma = f_s * r # std. dev. of Gaussian
+        reference_image = cv2.GaussianBlur(source_image, (r,r) if r%2 == 1 else (r+1, r+1), sigma)
         # reset gradiant cache
         gradient, grad_x, grad_y = None, None, None
         # paint a layer
@@ -293,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument('--straight', action='store_true', default=False, help='Use straight brush strokes. Default False=curved strokes.')
     parser.add_argument('--f_g', type=float, default=1., help='Grid size - controls spacing of brush strokes')
     parser.add_argument('--debug', action='store_true', default=False, help='Output information important for debugging.')
+    parser.add_argument('--f_s', type=float, default=0., help='Std. Dev. of Gaussian kernel')
 
     args = parser.parse_args()
 
@@ -301,7 +303,7 @@ if __name__ == "__main__":
     img = cv2.imread(args.img, cv2.IMREAD_COLOR)[:,:,::-1]
     # img, original_width, original_height = resize_img(img)
 
-    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g) * 255.
+    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s) * 255.
 
     # painting = cv2.resize(painting, (original_width, original_height))
     cv2.imwrite(args.output, painting[:,:,::-1])
