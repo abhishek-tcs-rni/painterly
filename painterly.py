@@ -194,7 +194,7 @@ def apply_stroke(canvas, stroke, color):
 
     return canvas * (1 - s_expanded) + s_color
 
-def paint_layer(canvas, reference_image, r, f_g, T, curved):
+def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c):
     """
     Go through the pixels and paint a layer of strokes with a given radius
 
@@ -228,7 +228,7 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved):
 
             if areaError > T:
                 if curved:
-                    s = 1 - make_spline_stroke(x, y, r, reference_image, canvas)
+                    s = 1 - make_spline_stroke(x, y, r, reference_image, canvas, fc=f_c)
                 else:
                     noise = np.random.rand(region.shape[0], region.shape[1])*0.0001
                     y1, x1 = np.unravel_index((region + noise).argmax(), region.shape)
@@ -240,7 +240,7 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved):
         # break
     return canvas
 
-def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1):
+def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1):
     """
     Paint a given image
 
@@ -267,7 +267,7 @@ def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1):
         # reset gradiant cache
         gradient, grad_x, grad_y = None, None, None
         # paint a layer
-        canvas = paint_layer(canvas, reference_image, r, T=T, curved=curved, f_g=f_g)
+        canvas = paint_layer(canvas, reference_image, r, T=T, curved=curved, f_g=f_g, f_c=f_c)
 
     return canvas
 
@@ -295,6 +295,7 @@ if __name__ == "__main__":
     parser.add_argument('--f_g', type=float, default=1., help='Grid size - controls spacing of brush strokes')
     parser.add_argument('--debug', action='store_true', default=False, help='Output information important for debugging.')
     parser.add_argument('--f_s', type=float, default=0., help='Std. Dev. of Gaussian kernel')
+    parser.add_argument('--f_c', type=float, default=1., help='Curvature filter - to limit/exaggerate stroke curvature')
 
     args = parser.parse_args()
 
@@ -303,7 +304,7 @@ if __name__ == "__main__":
     img = cv2.imread(args.img, cv2.IMREAD_COLOR)[:,:,::-1]
     # img, original_width, original_height = resize_img(img)
 
-    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s) * 255.
+    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s, f_c=args.f_c) * 255.
 
     # painting = cv2.resize(painting, (original_width, original_height))
     cv2.imwrite(args.output, painting[:,:,::-1])
