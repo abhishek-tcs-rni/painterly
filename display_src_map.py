@@ -16,6 +16,8 @@ if __name__ == "__main__":
     srcU = f['source_U']
     srcV = f['source_V']
 
+    assert(img.shape[:-1] == srcU.shape == srcV.shape)
+
     # get mapped img
     src_map_img = get_source_map_img(img, srcU, srcV)
     displayImg(src_map_img)
