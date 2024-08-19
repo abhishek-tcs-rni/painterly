@@ -93,16 +93,7 @@ def draw_spline_stroke(K, r, width=128, height=128):
         z = r
         w = 1.
         cv2.circle(canvas, (x, y), z, w, -1)
-    
-    # X,Y = np.where(canvas == 1.0)
-
-    # tmp = np.zeros(canvas.shape).astype('int')
-    # tmp[2*X,2*Y] = 1 # one-spaced grid
-
-    # tmp = tmp.astype('float32')
-    # rgb_tmp = convertGray2RGB(tmp)
-    # displayImg(rgb_tmp)
-    
+        
     return 1 - cv2.resize(canvas, dsize=(width, height))
 
 def make_stroke(r, x0, x1, y0, y1, width, height):
@@ -225,7 +216,15 @@ def apply_stroke(canvas, stroke, color):
 
     return canvas * (1 - s_expanded) + s_color
 
-def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c, max_str_len=None, min_str_len=None):
+def set_stroke_source(sourceU, sourceV, stroke, ptX, ptY):
+
+    X,Y = np.where(stroke == 1.0)
+    sourceU[X,Y] = ptX
+    sourceV[X,Y] = ptY
+
+    return sourceU, sourceV
+
+def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c, max_str_len=None, min_str_len=None, src_U=None, src_V=None):
     """
     Go through the pixels and paint a layer of strokes with a given radius
 
@@ -267,14 +266,12 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c, max_str_len=Non
                     y1 += max(y - grid//2, 0)
                     s = 1 - make_stroke(r/width*2, x/width, x1/width, y/height, y1/height, width, height)
                 color = reference_image[y,x,:] / 255.
-                
-                stroke_rgb = convertGray2RGB(s)
-                print("stroke_rgb.shape: ", stroke_rgb.shape)
-                displayImg(stroke_rgb)
-                
+
                 canvas = apply_stroke(canvas, s, color)
+
+                src_U, src_V = set_stroke_source(src_U, src_V, s, y, x)
         # break
-    return canvas
+    return canvas, src_U, src_V
 
 def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1, max_str_len=None, min_str_len=None):
     """
@@ -295,6 +292,10 @@ def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1, max_str_len=
     global gradient, grad_x, grad_y
     canvas = np.ones(source_image.shape)
 
+    # Source pixel (U,V)
+    sourceU = np.zeros(source_image.shape[:-1]).astype('int')
+    sourceV = np.zeros(source_image.shape[:-1]).astype('int')
+
     # paint the canvas
     for r in sorted(R, reverse=True): # largest to smallest
         # apply Gaussian blur
@@ -303,9 +304,9 @@ def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1, max_str_len=
         # reset gradiant cache
         gradient, grad_x, grad_y = None, None, None
         # paint a layer
-        canvas = paint_layer(canvas, reference_image, r, T=T, curved=curved, f_g=f_g, f_c=f_c, max_str_len=max_str_len, min_str_len=min_str_len)
+        canvas, sourceU, sourceV = paint_layer(canvas, reference_image, r, T=T, curved=curved, f_g=f_g, f_c=f_c, max_str_len=max_str_len, min_str_len=min_str_len, src_U=sourceU, src_V=sourceV)
 
-    return canvas
+    return canvas, sourceU, sourceV
 
 def resize_img(img, max_size=300):
     h, w, _ = img.shape
@@ -327,6 +328,11 @@ def displayImg(img, windowName = 'Image'):
 
 debug = False
 
+def get_source_map_img(img, src_X, src_Y):
+    mapping = img[src_X,src_Y,:]
+    mapping = mapping / 255.0
+    return mapping
+
 if __name__ == "__main__":
     import argparse
 
@@ -347,6 +353,7 @@ if __name__ == "__main__":
     parser.add_argument('--j_h', type=float, default=0., help='Hue jitter')
     parser.add_argument('--j_s', type=float, default=0., help='Saturation jitter')
     parser.add_argument('--j_v', type=float, default=0., help='Value jitter')
+    parser.add_argument('--source_map', type=str, default='./source_map.npz', help='Numpy file name and path to store source mapping')
 
     args = parser.parse_args()
 
@@ -362,7 +369,13 @@ if __name__ == "__main__":
         img = add_hsv_jitter(img, hue_jitter, saturation_jitter, value_jitter)
         displayImg(img)
 
-    painting = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s, f_c=args.f_c, max_str_len=args.maxLength, min_str_len=args.minLength) * 255.
+    painting, srcU, srcV = paint(img, args.r, T=args.T, curved=(not args.straight), f_g=args.f_g, f_s=args.f_s, f_c=args.f_c, max_str_len=args.maxLength, min_str_len=args.minLength)
+    painting = painting * 255.
 
     # painting = cv2.resize(painting, (original_width, original_height))
     cv2.imwrite(args.output, painting[:,:,::-1])
+
+    # save srcXY mapping and display image created using it
+    np.savez(args.source_map, source_U=srcU, source_V=srcV)
+    src_map_img = get_source_map_img(img, srcU, srcV)
+    displayImg(src_map_img)
