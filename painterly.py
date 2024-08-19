@@ -93,6 +93,16 @@ def draw_spline_stroke(K, r, width=128, height=128):
         z = r
         w = 1.
         cv2.circle(canvas, (x, y), z, w, -1)
+    
+    # X,Y = np.where(canvas == 1.0)
+
+    # tmp = np.zeros(canvas.shape).astype('int')
+    # tmp[2*X,2*Y] = 1 # one-spaced grid
+
+    # tmp = tmp.astype('float32')
+    # rgb_tmp = convertGray2RGB(tmp)
+    # displayImg(rgb_tmp)
+    
     return 1 - cv2.resize(canvas, dsize=(width, height))
 
 def make_stroke(r, x0, x1, y0, y1, width, height):
@@ -257,6 +267,11 @@ def paint_layer(canvas, reference_image, r, f_g, T, curved, f_c, max_str_len=Non
                     y1 += max(y - grid//2, 0)
                     s = 1 - make_stroke(r/width*2, x/width, x1/width, y/height, y1/height, width, height)
                 color = reference_image[y,x,:] / 255.
+                
+                stroke_rgb = convertGray2RGB(s)
+                print("stroke_rgb.shape: ", stroke_rgb.shape)
+                displayImg(stroke_rgb)
+                
                 canvas = apply_stroke(canvas, s, color)
         # break
     return canvas
@@ -299,6 +314,10 @@ def resize_img(img, max_size=300):
     elif h > max_size and h >= w:
         img = cv2.resize(img, (max_size, int((max_size/h) * w)))
     return img, w, h
+
+def convertGray2RGB(grayscale_img):
+    rgb_img = np.stack([grayscale_img] * 3, axis=-1)
+    return rgb_img
 
 def displayImg(img, windowName = 'Image'):
     img = img[:,:,::-1]
