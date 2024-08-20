@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 MAX_ITERATIONS = 100
+EMPTY_COLOR = (255, 255, 255)
 
 def add_hsv_jitter(image, hue_jitter, sat_jitter, val_jitter):
 
@@ -293,8 +294,8 @@ def paint(source_image, R, T=100, curved=True, f_s=0, f_g=1, f_c=1, max_str_len=
     canvas = np.ones(source_image.shape)
 
     # Source pixel (U,V)
-    sourceU = np.zeros(source_image.shape[:-1]).astype('int')
-    sourceV = np.zeros(source_image.shape[:-1]).astype('int')
+    sourceU = source_image.shape[0] * np.ones(source_image.shape[:-1]).astype('int')
+    sourceV = source_image.shape[1] * np.ones(source_image.shape[:-1]).astype('int')
 
     # paint the canvas
     for r in sorted(R, reverse=True): # largest to smallest
@@ -329,8 +330,22 @@ def displayImg(img, windowName = 'Image'):
 debug = False
 
 def get_source_map_img(img, src_X, src_Y):
-    mapping = img[src_X,src_Y,:]
-    mapping = mapping / 255.0
+
+    # get empty cells
+    empty_u,empty_v = np.where(src_X == img.shape[0])
+    empty_u_2,empty_v_2 = np.where(src_Y == img.shape[1])
+    assert(np.all(empty_u == empty_u_2) and np.all(empty_v == empty_v_2))
+
+    # at empty cells, replace source as (0,0)
+    src_X[empty_u,empty_v] = 0
+    src_Y[empty_u,empty_v] = 0
+    mapping = img[src_X, src_Y, :]
+
+    # at empty cells, replace painting color with empty color
+    mapping[empty_u,empty_v,:] = EMPTY_COLOR
+
+    mapping = mapping / 255.0 # to float
+
     return mapping
 
 if __name__ == "__main__":
