@@ -3,6 +3,10 @@ import numpy as np
 import cv2
 from painterly import get_source_map_img, displayImg
 
+ARROW_COLOR = (0, 255, 0)
+ARROW_WIDTH = 1
+ARROW_HEAD_LEN = 0.05
+
 if __name__ == "__main__":
 
     img_path = sys.argv[1]
@@ -30,7 +34,7 @@ if __name__ == "__main__":
             src_u = srcU[u,v]
             src_v = srcV[u,v]
             canvas = np.array(canvas)
-            cv2.arrowedLine(canvas, (src_v, src_u), (v, u), (0, 255, 0), 1, line_type=cv2.LINE_AA, tipLength=0.05)
+            cv2.arrowedLine(canvas, (src_v, src_u), (v, u), ARROW_COLOR, ARROW_WIDTH, line_type=cv2.LINE_AA, tipLength=ARROW_HEAD_LEN)
 
     # display
     displayImg(canvas)

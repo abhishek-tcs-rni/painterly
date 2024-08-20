@@ -375,7 +375,9 @@ if __name__ == "__main__":
     # painting = cv2.resize(painting, (original_width, original_height))
     cv2.imwrite(args.output, painting[:,:,::-1])
 
-    # save srcXY mapping and display image created using it
+    # save srcXY mapping
     np.savez(args.source_map, source_U=srcU, source_V=srcV)
-    src_map_img = get_source_map_img(img, srcU, srcV)
-    displayImg(src_map_img)
+
+    # # display reconstructed painting from mapping
+    # src_map_img = get_source_map_img(img, srcU, srcV)
+    # displayImg(src_map_img)
